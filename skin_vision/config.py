@@ -20,17 +20,5 @@ class Config(BaseSettings):
     LR_EXP_DECAY: float = 0.96
     LR_DECAY_STEPS: int = 20
 
-    # DATA AUGMENTATION
-    # rot: float = 180.0,
-    # shr: float = 1.5,
-    # hzoom: float = 6.0,
-    # wzoom: float = 6.0,
-    # hshift: float = 6.0,
-    # wshift: float = 6.0,
-
-    # optimizer = 'adam',
-    # label_smooth_fac = 0.05,
-    # tta_steps = 25
-
 
 config = Config()

@@ -1,5 +1,3 @@
-from functools import lru_cache
-from io import BytesIO
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -10,59 +8,36 @@ from tensorflow.keras.callbacks import Callback
 from skin_vision.config import config
 from skin_vision.logger import logger
 
-tf.compat.v1.disable_eager_execution()
-
-
-@lru_cache
-def load_mobilenetv2(
-        input_shape: tuple = (config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], 3),
-        include_top: bool = False,
-        weights: str = "imagenet"
-):
-    """Load pre-trained MobileNetV2 with ImageNet weights."""
-    return keras.applications.MobileNetV2(input_shape=input_shape, include_top=include_top, weights=weights)
-
-
-@lru_cache
-def load_efficientnetb7(
-        input_shape: tuple = (config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], 3),
-        include_top: bool = False,
-        weights: str = "imagenet"
-):
-    """Load pre-trained EfficientNetB7 with ImageNet weights."""
-    return keras.applications.EfficientNetB7(input_shape=input_shape, include_top=include_top, weights=weights)
-
-
-def get_model(bias: float):
-
-    bias = tf.keras.initializers.Constant(bias)
-    base_model = load_efficientnetb7(
-        input_shape=(config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], 3),
-        include_top=False,
-        weights="imagenet"
-    )
-    base_model.trainable = False
-
-    model = tf.keras.Sequential([
-        base_model,
-        tf.keras.layers.GlobalAveragePooling2D(),
-        tf.keras.layers.Dense(20, activation="relu"),
-        tf.keras.layers.Dropout(0.4),
-        tf.keras.layers.Dense(10, activation="relu"),
-        tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.Dense(1, activation="sigmoid", bias_initializer=bias)
-    ])
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-2),
-        loss="binary_crossentropy",
-        metrics=[tf.keras.metrics.AUC(name='auc')]
-    )
-    return model
-
 
 class SkinVisionModel:
     def __init__(self, model_bias: float):
-        self.model: Optional[keras.Model] = get_model(bias=model_bias)
+        self.model: Optional[keras.Model] = self.get_model(bias=model_bias)
+
+    @staticmethod
+    def get_model(bias: float):
+        bias = tf.keras.initializers.Constant(bias)
+        base_model = keras.applications.EfficientNetB7(
+            input_shape=(config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], 3),
+            include_top=False,
+            weights="imagenet"
+        )
+        base_model.trainable = False
+
+        model = tf.keras.Sequential([
+            base_model,
+            tf.keras.layers.GlobalAveragePooling2D(),
+            tf.keras.layers.Dense(20, activation="relu"),
+            tf.keras.layers.Dropout(0.4),
+            tf.keras.layers.Dense(10, activation="relu"),
+            tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.Dense(1, activation="sigmoid", bias_initializer=bias)
+        ])
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-2),
+            loss="binary_crossentropy",
+            metrics=[tf.keras.metrics.AUC(name='auc')]
+        )
+        return model
 
     @property
     def callback_early_stopping(self) -> Callback:
